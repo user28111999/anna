@@ -5,6 +5,8 @@ import { PermissionFlagsBits } from 'discord.js';
 import { amount, cash, config, dailyKey, label, memberFrom, name, panel, pick, root, UserError } from './shared.js';
 import { change, credit, getUser, user } from './store.js';
 
+import { recentLogs } from './logger.js';
+
 const shop = new Map(Object.entries(config.shop).map(([item, price]) => [label(item), price]));
 const itemKey = label;
 
@@ -20,7 +22,7 @@ function addItem(account, item) {
 
 function requireAdmin(message) {
   if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-    throw new UserError('Only server administrators can change balances.');
+    throw new UserError('Only server administrators can use this command.');
   }
 }
 
@@ -85,17 +87,18 @@ async function lootbox(message) {
   return message.reply(config.emoji.lootbox + ' You opened a lootbox and found **' + reward + '**.');
 }
 
-async function inventory(message) {
-  const account = getUser(message.author.id);
+async function inventory(message, args) {
+  const member = args ? await memberFrom(message.guild, args) : message.member;
+  const account = getUser(member.id);
   const rows = Object.values(account.items).map(item => '• ' + item.name + ' × ' + item.count);
   const summary = [config.emoji.money + ' ' + cash(account.balance),
     config.emoji.lootbox + ' Lootboxes × ' + account.lootboxes, ...rows].join('\n');
   // Send a readable text attachment if an edited item list exceeds Discord's embed limit.
   if (summary.length > 4096) {
-    return message.reply({ content: 'Inventory for **' + name(message.member) + '**',
+    return message.reply({ content: 'Inventory for **' + name(member) + '**',
       files: [{ attachment: Buffer.from(summary), name: 'inventory.txt' }] });
   }
-  return message.reply(panel('Inventory • ' + name(message.member), summary));
+  return message.reply(panel('Inventory • ' + name(member), summary));
 }
 
 async function shopCommand(message, args) {
@@ -141,6 +144,7 @@ async function prompt(message, args, kind) {
   const file = new URL(kind + '.txt', root);
   const addition = args.match(/^add(?:\s+([\s\S]*))?$/i);
   if (addition) {
+    requireAdmin(message);
     const line = addition[1]?.replace(/\s+/g, ' ').trim();
     if (!line || line.length > 1500) throw new UserError('Enter a prompt of 1–1,500 characters.');
     // A leading newline also works when the hand-edited file lacks a final newline.
@@ -205,8 +209,28 @@ async function media(message, kind) {
   throw new UserError('No uploadable ' + (kind === 'gif' ? 'GIFs' : 'still images') + ' in ' + kind + '/.');
 }
 
+async function logs(message) {
+  requireAdmin(message);
+  let attachment;
+  try {
+    attachment = await recentLogs(message.guildId);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return message.reply('No logs for this server yet.');
+  }
+  return message.reply({ content: 'Recent log entries for this server (up to 512 KiB).',
+    files: [{ attachment, name: 'anna.log' }] });
+}
+
+async function ping(message, args) {
+  if (!args) return message.reply('Ping!');
+  const member = await memberFrom(message.guild, args);
+  return message.reply({ content: 'Ping! <@' + member.id + '>',
+    allowedMentions: { parse: [], users: [member.id], repliedUser: false } });
+}
+
 export const commands = {
-  money, daily, lootbox, inventory, give, shop: shopCommand,
+  money, daily, lootbox, inventory, give, logs, ping, shop: shopCommand,
   gif: message => media(message, 'gif'),
   img: message => media(message, 'img'),
   dare: (message, args) => prompt(message, args, 'dare'),
@@ -216,7 +240,7 @@ export const commands = {
 
 export const helpLines = [
   'help', 'money [@member]', 'money <add|set|remove> <amount> <@member> (admin)',
-  'gif', 'img', 'daily', 'lootbox', 'shop [buy <item>]', 'inventory',
+  'gif', 'img', 'daily', 'lootbox', 'shop [buy <item>]', 'inventory [@member]', 'ping [@member]', 'logs (admin)',
   'give <@member> <item>', 'dare [@member]', 'truth [@member]',
-  'dare add <dare>', 'truth add <question>', 'persona'
+  'dare add <dare> (admin)', 'truth add <question> (admin)', 'persona'
 ];
