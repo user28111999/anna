@@ -46,11 +46,12 @@ export async function run(context) {
 
     const summary = (reveal, current = -1) => {
       const dealerCards = render(application, reveal ? dealer : dealer.slice(0, 1));
-      const dealerLine = reveal ? dealerCards + '  •  **' + handValue(dealer) + '**'
-        : dealerCards + '  ' + appEmoji(application, 'empty_blue', appEmoji(application, 'empty_red', '🂠'));
+      const dealerTotal = reveal ? String(handValue(dealer)) : handValue(dealer.slice(0, 1)) + '+?';
+      const back = reveal ? '' : '  ' + appEmoji(application, 'empty_blue', appEmoji(application, 'empty_red', '🂠'));
+      const dealerLine = dealerCards + back + '  **(' + dealerTotal + ')**';
       const playerLines = hands.map((hand, index) => (current === index ? '▶  ' : '')
         + '**Hand ' + (index + 1) + '**  ·  ' + cash(hand.stake) + '\n'
-        + render(application, hand.cards) + '  •  **' + handValue(hand.cards) + '**');
+        + render(application, hand.cards) + '  **(' + handValue(hand.cards) + ')**');
       return ['**Dealer**\n' + dealerLine, ...playerLines].join('\n\n');
     };
 
