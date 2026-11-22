@@ -1,0 +1,34 @@
+{
+  "prefix": "anna",
+  "currency": "money",
+  "daily": {
+    "amount": 20,
+    "timezone": "Europe/Paris",
+    "resetHour": 6,
+    "lootboxChance": 0.5
+  },
+  "lootbox": {
+    "money": 20,
+    "items": ["a pair of J's", "pizza", "steak", "flowers"]
+  },
+  "shop": {
+    "flowers": 10,
+    "doner kebab": 5,
+    "snickers bar": 2,
+    "toilet": 30
+  },
+  "turnSeconds": 120,
+  "emoji": {
+    "money": "💰",
+    "lootbox": "📦",
+    "blackjack": "🃏",
+    "hit": "👊",
+    "stand": "✋",
+    "split": "✂️",
+    "double": "⏫",
+    "yahtzee": "🎲",
+    "dice": ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"],
+    "uno": "🟥",
+    "colors": {"red": "🔴", "yellow": "🟡", "green": "🟢", "blue": "🔵", "wild": "🌈"}
+  }
+}

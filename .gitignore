@@ -1,0 +1,12 @@
+node_modules/
+.env
+/data/*.json
+/data/*.tmp
+/data/*.lock
+/data/slate.json
+*.log
+emojis/
+/gif/*.gif
+/img/*.png
+/img/*.jpg
+/img/*.jpeg
