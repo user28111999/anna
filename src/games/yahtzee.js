@@ -1,9 +1,13 @@
 import { randomInt } from 'node:crypto';
 import { cash, config, name, panel } from '../shared.js';
-import { button, choose, playRound, row, select } from './controls.js';
+import { appEmoji } from '../emojis.js';
+import { button, choose, playDuel, row, select } from './controls.js';
 
 export const command = 'yahtzee';
-export const usage = 'yahtzee <bet>';
+export const usage = 'yahtzee <bet> @opponent';
+export const acceptsOpponent = true;
+export const requiresOpponent = true;
+export const maxReturn = 3;
 
 const upper = ['Ones', 'Twos', 'Threes', 'Fours', 'Fives', 'Sixes'];
 const categories = [...upper, 'Three of a kind', 'Four of a kind', 'Full house',
@@ -37,42 +41,33 @@ const die = () => randomInt(1, 7);
 const roll = () => Array.from({ length: 5 }, die);
 const open = sheet => categories.filter(category => !Object.hasOwn(sheet, category));
 
-// The bot plays the same three-roll turns. It keeps the most frequent face
-// (highest face on a tie), then chooses the highest scoring unused category.
-function botTurn(sheet) {
-  let dice = roll();
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const ranked = [6, 5, 4, 3, 2, 1].sort((a, b) =>
-      dice.filter(value => value === b).length - dice.filter(value => value === a).length);
-    dice = dice.map(value => value === ranked[0] ? value : die());
-  }
-  const category = open(sheet).sort((a, b) => scoreDice(dice, b) - scoreDice(dice, a))[0];
-  sheet[category] = scoreDice(dice, category);
-  return category + ' • ' + sheet[category];
-}
-
+// Each player completes a turn in every round and keeps a separate scorecard.
 export async function run(context) {
   const { message, bet, bank } = context;
-  const player = message.author.id;
-  const title = config.emoji.yahtzee + ' Yahtzee • ' + name(message.member);
-  await playRound(context, title, { [player]: bet }, async (board, ticket) => {
-    const yours = {};
-    const house = {};
+  const title = config.emoji.yahtzee + ' Yahtzee Duel';
+  const dieEmoji = value => appEmoji(message.client.application, 'dice_' + value, config.emoji.dice[value - 1]);
+  await playDuel(context, title, async (board, ticket, players) => {
+    const sheets = [{}, {}];
+    const totals = () => players.map((member, index) =>
+      '**' + name(member) + '**  •  ' + totalScore(sheets[index])).join('\n');
     let lastPlay = '';
-    let timedOut = false;
-    for (let turn = 1; turn <= categories.length; turn++) {
+    let forfeited;
+
+    for (let turn = 0; turn < categories.length * 2; turn++) {
+      const player = turn % 2;
+      const member = players[player];
+      const sheet = sheets[player];
       let dice = roll();
       let rollsLeft = 2;
       let held = new Set();
       while (true) {
-        const faces = dice.map((value, index) =>
-          (held.has(String(index)) ? '**' : '') + config.emoji.dice[value - 1]
-          + (held.has(String(index)) ? '** 🔒' : '')).join('  ');
-        const standings = '**You • ' + totalScore(yours) + ' | Bot • ' + totalScore(house) + '**';
-        const view = panel(title, 'Round ' + turn + '/13 • ' + rollsLeft + ' rerolls left\n\n'
-          + faces + '\n\n' + standings + (lastPlay ? '\nLast bot play • ' + lastPlay : '')
-          + '\n\nHold dice before rerolling, or score an unused category.');
-        const scoreOptions = open(yours).map(category => ({
+        const faces = dice.map((value, index) => dieEmoji(value) + (held.has(String(index)) ? '🔒' : '')).join('   ');
+        const view = panel(title, '**Round ' + (Math.floor(turn / 2) + 1) + ' / 13**  ·  '
+          + rollsLeft + ' rerolls left\n**Turn**  •  ' + name(member)
+          + '\n\n' + faces + '\n\n**Scoreboard**\n' + totals()
+          + (lastPlay ? '\n\nLast play  •  ' + lastPlay : '')
+          + '\n\nChoose dice to hold, reroll, or score an unused category.');
+        const scoreOptions = open(sheet).map(category => ({
           label: category + ' (' + scoreDice(dice, category) + ')', value: category
         }));
         const rows = [row(select('score', 'Score a category', scoreOptions))];
@@ -84,9 +79,9 @@ export async function run(context) {
           rows.push(row(button('reroll', 'Reroll unheld dice')));
           ids.push('hold', 'reroll');
         }
-        const choice = await choose(board, player, view, rows, ids);
+        const choice = await choose(board, member.id, view, rows, ids);
         if (!choice) {
-          timedOut = true;
+          forfeited = player;
           break;
         }
         if (choice.customId === 'hold') held = new Set(choice.values);
@@ -96,23 +91,30 @@ export async function run(context) {
         }
         if (choice.customId === 'score') {
           const [category] = choice.values;
-          yours[category] = scoreDice(dice, category);
-          lastPlay = botTurn(house);
+          sheet[category] = scoreDice(dice, category);
+          lastPlay = name(member) + ' scored ' + sheet[category] + ' in ' + category + '.';
           break;
         }
       }
-      if (timedOut) break;
+      if (forfeited !== undefined) break;
     }
 
-    const playerScore = totalScore(yours);
-    const botScore = totalScore(house);
-    const payout = timedOut ? 0 : bet * (playerScore > botScore ? 3 : playerScore === botScore ? 2 : 0);
-    bank.settle(ticket, { [player]: payout });
-    const result = timedOut ? 'Time expired. Stake lost.'
-      : playerScore > botScore ? 'You won!' : playerScore === botScore ? 'Draw.' : 'The bot won.';
-    const scorecard = categories.map(category => category + ' • ' + (yours[category] ?? '—')
-      + ' / ' + (house[category] ?? '—')).join('\n');
-    await board.edit(panel(title, '**' + result + '**\nYou • ' + playerScore + ' | Bot • ' + botScore
-      + '\n**Returned • ' + cash(payout) + '**\n\n' + scorecard));
+    const [left, right] = sheets.map(totalScore);
+    const draw = forfeited === undefined && left === right;
+    const winner = forfeited !== undefined ? 1 - forfeited : Number(right > left);
+    // Keep the original solo payout rules for each player's own wager.
+    const payouts = draw ? { [players[0].id]: bet * 2, [players[1].id]: bet * 2 }
+      : { [players[winner].id]: bet * 3 };
+    bank.settle(ticket, payouts);
+    const result = draw ? '**Draw.** Both players received ' + cash(bet * 2) + '.'
+      : '**' + name(players[winner]) + ' won ' + cash(bet * 3) + '.**'
+        + (forfeited === undefined ? '' : '\n' + name(players[forfeited]) + ' ran out of time.');
+    const final = panel(title, result + '\n\n' + totals());
+    final.embeds[0].fields = players.map((member, index) => ({
+      name: name(member),
+      value: categories.map(category => category + '  •  ' + (sheets[index][category] ?? '—')).join('\n'),
+      inline: true
+    }));
+    await board.edit(final);
   });
 }

@@ -1,3 +1,4 @@
+import { privateReply } from '../logger.js';
 import { ButtonStyle, MessageFlags } from 'discord.js';
 import { cash, config, memberFrom, name, panel, shuffle, UserError } from '../shared.js';
 import { button, choose, row, turnMs } from './controls.js';
@@ -68,7 +69,7 @@ async function humanTurn(board, view, table, turn, top, color) {
   handCollector.once('end', cancel);
   handCollector.on('collect', interaction => {
     const viewer = table.find(entry => entry.id === interaction.user.id);
-    interaction.reply({ ...panel('Your hand', handView(viewer.hand)), flags: MessageFlags.Ephemeral })
+    privateReply(interaction, { ...panel('Your hand', handView(viewer.hand)), flags: MessageFlags.Ephemeral })
       .catch(error => console.error('Could not show UNO hand:', error));
   });
   try {
@@ -131,6 +132,7 @@ export async function run(context) {
       if (foe && bank.getUser(foe.id).balance < bet) {
         throw new UserError(name(foe) + ' has too little ' + config.currency + ' to accept this bet.');
       }
+      if (foe) context.claimPlayer?.(foe.id);
       ticket = bank.reserve(stakes);
     } catch (error) {
       if (!(error instanceof UserError)) throw error;
