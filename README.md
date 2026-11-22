@@ -34,7 +34,7 @@ Use `npm run dev` for Node’s watch mode. Run one instance per copy of the save
 | `anna gif` / `anna img` | Upload a random file from the matching folder. |
 | `anna dare [@member]` / `anna truth [@member]` | Draw a random prompt and optionally address it to a friend. |
 | `anna dare add <text>` / `anna truth add <text>` | Append a single prompt to its text file. Server administrator only. |
-| `anna ping [@member]` | Reply with Ping! and notify the mentioned member if provided. |
+| `anna fuck [@member]` | Reply with a Fuck you! OR notify tell someone to fuck off. |
 | `anna logs` or `logs` | Download recent command and output logs for this server. Server administrator only. |
 | `anna persona` | Placeholder for a future feature. |
 

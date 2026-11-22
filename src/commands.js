@@ -222,15 +222,15 @@ async function logs(message) {
     files: [{ attachment, name: 'anna.log' }] });
 }
 
-async function ping(message, args) {
-  if (!args) return message.reply('Ping!');
+async function fuck(message, args) {
+  if (!args) return message.reply('Fuck you!');
   const member = await memberFrom(message.guild, args);
-  return message.reply({ content: 'Ping! <@' + member.id + '>',
+  return message.reply({ content: 'Fuck <@' + member.id + '>!',
     allowedMentions: { parse: [], users: [member.id], repliedUser: false } });
 }
 
 export const commands = {
-  money, daily, lootbox, inventory, give, logs, ping, shop: shopCommand,
+  money, daily, lootbox, inventory, give, logs, fuck, shop: shopCommand,
   gif: message => media(message, 'gif'),
   img: message => media(message, 'img'),
   dare: (message, args) => prompt(message, args, 'dare'),
@@ -240,7 +240,7 @@ export const commands = {
 
 export const helpLines = [
   'help', 'money [@member]', 'money <add|set|remove> <amount> <@member> (admin)',
-  'gif', 'img', 'daily', 'lootbox', 'shop [buy <item>]', 'inventory [@member]', 'ping [@member]', 'logs (admin)',
+  'gif', 'img', 'daily', 'lootbox', 'shop [buy <item>]', 'inventory [@member]', 'fuck [@member]', 'logs (admin)',
   'give <@member> <item>', 'dare [@member]', 'truth [@member]',
   'dare add <dare> (admin)', 'truth add <question> (admin)', 'persona'
 ];
