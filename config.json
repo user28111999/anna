@@ -26,8 +26,6 @@
     "stand": "✋",
     "split": "✂️",
     "double": "⏫",
-    "yahtzee": "🎲",
-    "dice": ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"],
     "uno": "🟥",
     "colors": {"red": "🔴", "yellow": "🟡", "green": "🟢", "blue": "🔵", "wild": "🌈"}
   }

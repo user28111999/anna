@@ -1,6 +1,6 @@
-# Anna 1.1
+# Anna 1.2
 
-A local Discord bot with a shared play-money wallet, four games, and editable text and media folders. It uses Node.js 24.22.1 or newer and has one direct dependency, discord.js.
+A local Discord bot with a shared play-money wallet, three games, and editable text and media folders. It uses Node.js 24.22.1 or newer and has one direct dependency, discord.js.
 
 ## Run it
 
@@ -42,22 +42,21 @@ Commands are case-insensitive. Members can be specified by mention or ID. Where 
 
 ## Games
 
-Each game starts with a positive whole-number bet or `all` and displays an embed. An all-in wager uses the challenger’s available balance at command time. An invited opponent must accept and match the stake before play starts. The stake is deducted when play starts. Payouts below are total returns, including any returned stake. Turn time defaults to two minutes.
+Each game starts with a positive whole-number bet or `all` and displays an embed. An all-in wager uses the challenger’s available balance at command time. An invited opponent has 30 seconds to accept and match the stake. The challenge message shows the countdown. The stake is deducted when play starts. Payouts below are total returns, including any returned stake. Turn time defaults to two minutes.
 
 | Command | How it plays | Return |
 | --- | --- | --- |
 | `anna blackjack <bet>` | The person who started the round reacts to hit, stand, split an equal-rank pair once, or double down with two cards. Split and double require another stake. Split aces get one card each. Dealer stands on soft 17. | Win 2×, opening blackjack 3× (2:1 profit), push 1×, loss 0. Hands settle separately after a split. |
-| `anna yahtzee <bet> @opponent` | A 13-round dice scorecard duel against a server member. Hold dice and reroll up to twice per round. Score one unused category per round. Upper-section bonus at 63, without bonus Yahtzee or joker rules. | Win 3×, draw 2×, loss 0. |
-| `anna connect4 <bet> @opponent` | React with 1️⃣ through 7️⃣ to drop a piece. Connect four in a row, column or diagonal. | Winner gets both stakes. On a draw, both stakes return. |
+| `anna connect4 <bet> @opponent` (alias `connectfour`) | React with 1️⃣ through 7️⃣ to drop a piece. Connect four in a row, column or diagonal. | Winner gets both stakes. On a draw, both stakes return. |
 | `anna uno <bet> [@opponent]` | Color Match house variant. Play against the bot or invite a friend. The friend must accept before either stake is charged. View your hand privately with the button. | Winner gets 2×. On a draw, stakes return. |
 
-Color Match starts with six cards per player. Match a card’s color or value. Use `anna uno play 3` to play the third card in your hand, or `anna uno play 3 blue` to play a Shift and choose blue. Swap exchanges hands and Draw 1 adds one card to the other hand. `anna uno draw` takes a card and passes the turn. Empty your hand to win. If a hand changes, open the hand button again for current card numbers. There is one Color Match table per channel.
+Color Match starts with six cards per player. Match a card’s color or value. Use `anna uno play 3` to play the third card in your hand, or `anna uno play 3 blue` to play a wild and choose blue. Reverse swaps hands, Skip gives you the next turn, and Draw Two and Wild Draw Four add cards to the other hand. `anna uno draw` takes a card and passes the turn. Empty your hand to win. Open the hand button again for current card numbers after a hand changes. There is one Color Match table per channel.
 
 A timed-out player forfeits. Restarting the bot refunds stakes from interrupted rounds.
 
 ## Application emojis and logs
 
-- Blackjack loads the application emojis by name, such as `clubs_1`, `hearts_queen` and `empty_blue` (or `empty_red`). Yahtzee looks for `dice_1` through `dice_6`. Upload the images in the Developer Portal for the same application as the bot token. Anna uses Unicode fallback symbols when a named emoji is unavailable.
+- Blackjack loads the application emojis by name, such as `clubs_1`, `hearts_queen` and `empty_blue` (or `empty_red`). UNO looks for colored faces such as `blue_0` and `yellow_draw_two`, wild faces such as `wild_wild_draw_four`, and the optional `empty_card` card back. Upload the images in the Developer Portal for the same application as the bot token. Anna uses Unicode fallback symbols when a named emoji is unavailable.
 - Anna writes commands, replies, game updates and errors to the terminal and a timestamped session file in `logs/`. Each server also gets its own command and output log. The admin command attaches up to the latest 512 KiB from that server. Private card hands are logged as delivery events, and binary attachments are logged by filename. Keep or delete older local log files as needed. Git ignores generated logs.
 
 ## Edit it

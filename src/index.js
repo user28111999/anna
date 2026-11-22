@@ -11,11 +11,15 @@ captureConsole();
 // Helper modules have no command export and are ignored.
 const modules = new URL('./games/', import.meta.url);
 const games = new Map();
+const gameCommands = new Map();
 for (const file of (await readdir(modules)).filter(file => file.endsWith('.js')).sort()) {
   const game = await import(new URL(file, modules));
   if (!game.command) continue;
-  if (games.has(game.command) || Object.hasOwn(commands, game.command) || game.command === 'help') {
-    throw new Error('Duplicate command: ' + game.command);
+  for (const key of [game.command, ...(game.aliases ?? [])]) {
+    if (gameCommands.has(key) || Object.hasOwn(commands, key) || key === 'help') {
+      throw new Error('Duplicate command: ' + key);
+    }
+    gameCommands.set(key, game);
   }
   games.set(game.command, game);
 }
@@ -51,7 +55,7 @@ client.on(Events.MessageCreate, async incoming => {
   const message = loggedMessage(incoming);
   const command = parsed[2].toLowerCase();
   const args = parsed[3]?.trim() ?? '';
-  const game = games.get(command);
+  const game = gameCommands.get(command);
   const participants = [];
   auditCommand(message);
 

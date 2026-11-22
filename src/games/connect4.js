@@ -2,7 +2,8 @@ import { cash, name, panel } from '../shared.js';
 import { chooseReaction, playDuel, requireReactionPermissions } from './controls.js';
 
 export const command = 'connect4';
-export const usage = 'connect4 <bet> @opponent';
+export const usage = 'connect4 <bet> @opponent (alias: connectfour)';
+export const aliases = ['connectfour'];
 export const acceptsOpponent = true;
 export const requiresOpponent = true;
 const columns = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣'];

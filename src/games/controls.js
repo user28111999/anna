@@ -7,32 +7,47 @@ export const turnMs = config.turnSeconds * 1000;
 export const row = (...components) => ({ type: ComponentType.ActionRow, components });
 export const button = (id, label, style = ButtonStyle.Secondary) =>
   ({ type: ComponentType.Button, custom_id: id, label, style });
-export const select = (id, placeholder, options, min = 1, max = 1) => ({
-  type: ComponentType.StringSelect, custom_id: id, placeholder, options,
-  min_values: min, max_values: max
-});
+const challengeMs = 30_000;
 
-// Carry choices forward only after Discord acknowledges the click. The collector
-// is installed before sending the edit so an immediate click is still captured.
-export async function choose(board, player, view, rows, ids) {
+// Expiry is measured separately from turn time. Serialize countdown edits so
+// a slow Discord response cannot overwrite the accepted or expired state.
+async function chooseChallenge(board, player, view, deadline) {
+  const remaining = () => deadline - Date.now();
   const collector = board.createMessageComponentCollector({
-    filter: interaction => interaction.user.id === player && ids.includes(interaction.customId),
-    max: 1, time: turnMs
+    filter: interaction => remaining() > 0 && interaction.user.id === player
+      && ['join', 'decline'].includes(interaction.customId),
+    max: 1, time: Math.max(1, remaining())
   });
-  const selected = new Promise(resolve => collector.on('end', entries => resolve(entries.first())));
+  const selected = new Promise(resolve => collector.once('end', (entries, reason) =>
+    resolve({ interaction: entries.first(), reason })));
+  const components = [row(button('join', 'Accept', ButtonStyle.Success), button('decline', 'Decline'))];
+  let edit;
+  let interval;
+
+  function refresh() {
+    if (edit || collector.ended || remaining() <= 0) return;
+    edit = board.edit({ ...view(remaining()), components })
+      .catch(error => {
+        collector.stop('editFailed');
+        console.error('Could not edit challenge countdown:', error);
+      }).finally(() => { edit = undefined; });
+  }
+
   try {
-    await board.edit({ ...view, components: rows });
-    const interaction = await selected;
+    refresh();
+    interval = setInterval(refresh, 5000);
+    const { interaction, reason } = await selected;
     if (interaction) {
       await interaction.deferUpdate();
-      // Dice selections are part of the public game moves.
-      auditMove(board.guildId, board.channelId, player, [interaction.customId, ...(interaction.values ?? [])]);
-    } else if (collector.endReason !== 'time') {
-      throw new Error('Game message became unavailable.');
+      auditMove(board.guildId, board.channelId, player, interaction.customId);
+      return interaction.customId;
     }
-    return interaction;
+    if (reason !== 'time') throw new Error('Challenge message became unavailable.');
+    return null;
   } finally {
+    clearInterval(interval);
     collector.stop();
+    await edit;
   }
 }
 
@@ -62,17 +77,18 @@ export async function playDuel(context, title, play) {
   const description = '**' + name(players[0]) + '** challenged **' + name(opponent)
     + '** for **' + cash(bet) + '** each.';
   if (bank.getUser(players[0].id).balance < bet) throw new UserError('Your balance is too low for that bet.');
-  const invite = panel(title, description);
+  const deadline = (message.createdTimestamp ?? Date.now()) + challengeMs;
+  const view = remaining => panel(title, description + '\n\n⏳ **'
+    + Math.max(0, Math.ceil(remaining / 1000)) + 's remaining**');
   const board = await message.reply({
-    ...invite, content: '<@' + opponent.id + '>',
+    ...view(deadline - Date.now()), content: '<@' + opponent.id + '>',
     allowedMentions: { parse: [], users: [opponent.id], repliedUser: false }
   });
 
   let ticket;
   try {
-    const choice = await choose(board, opponent.id, invite,
-      [row(button('join', 'Accept', ButtonStyle.Success), button('decline', 'Decline'))], ['join', 'decline']);
-    if (choice?.customId !== 'join') {
+    const choice = await chooseChallenge(board, opponent.id, view, deadline);
+    if (choice !== 'join') {
       return await board.edit({ ...panel(title, choice ? 'Challenge declined.' : 'Challenge expired.'), content: null });
     }
     await board.edit({ ...panel(title, description), content: null });
